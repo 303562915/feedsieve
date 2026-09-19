@@ -244,6 +244,9 @@ export default defineContentScript({
       if (type === 'feedsieve:block-queue-resume') {
         return resumePersistentQueue();
       }
+      if (type === 'feedsieve:block-queue-auto-resume') {
+        return resumePersistentQueue(true);
+      }
       if (type === 'feedsieve:block-queue-pause') {
         return updatePersistentQueueStatus('paused');
       }
@@ -1432,16 +1435,31 @@ export default defineContentScript({
       const state = await getPersistentBlockQueue();
       if (!state || state.status !== 'running') return;
       state.status = 'paused';
+      state.pauseReason = 'interrupted';
+      delete state.autoResumeAt;
       for (const task of state.tasks) {
         if (task.status === 'running') task.status = 'pending';
       }
       await setPersistentBlockQueue(state);
     }
 
-    async function resumePersistentQueue(): Promise<{ status: string }> {
+    async function resumePersistentQueue(
+      automatic = false,
+    ): Promise<{ status: string }> {
       const state = await getPersistentBlockQueue();
       if (!state) return { status: 'absent' };
+      if (
+        automatic &&
+        (state.status !== 'paused' ||
+          state.pauseReason !== 'rate_limited' ||
+          !state.autoResumeAt ||
+          state.autoResumeAt > Date.now())
+      ) {
+        return { status: state.status };
+      }
       state.status = 'running';
+      delete state.pauseReason;
+      delete state.autoResumeAt;
       for (const task of state.tasks) {
         if (task.status === 'running') task.status = 'pending';
         if (
@@ -1455,6 +1473,12 @@ export default defineContentScript({
         }
       }
       await setPersistentBlockQueue(state);
+      void browser.runtime
+        .sendMessage({ type: 'feedsieve:block-queue-clear-resume', queueId: state.id })
+        .catch(() => {
+          // The background service worker may have been restarted; its startup
+          // handler will reconcile the persisted queue state.
+        });
       void runPersistentQueue();
       return { status: 'running' };
     }
@@ -1465,7 +1489,12 @@ export default defineContentScript({
       const state = await getPersistentBlockQueue();
       if (!state) return { status: 'absent' };
       state.status = status;
+      state.pauseReason = 'manual';
+      delete state.autoResumeAt;
       await setPersistentBlockQueue(state);
+      void browser.runtime
+        .sendMessage({ type: 'feedsieve:block-queue-clear-resume', queueId: state.id })
+        .catch(() => undefined);
       return { status };
     }
 
@@ -1477,6 +1506,9 @@ export default defineContentScript({
         if (task.status === 'pending' || task.status === 'running') task.status = 'cancelled';
       }
       await setPersistentBlockQueue(state);
+      void browser.runtime
+        .sendMessage({ type: 'feedsieve:block-queue-clear-resume', queueId: state.id })
+        .catch(() => undefined);
       return { status: 'cancelled' };
     }
 
@@ -1531,13 +1563,30 @@ export default defineContentScript({
           hideCellsSoon(collectCellsForHandle(task.handle));
         } else {
           currentTask.failureCode = outcome.code;
-          if (
-            ['rate_limited', 'auth_required', 'missing_csrf', 'network_error'].includes(
-              outcome.code,
-            )
-          ) {
+          if (outcome.code === 'rate_limited') {
             currentTask.status = 'pending';
             state.status = 'paused';
+            state.pauseReason = 'rate_limited';
+            state.autoResumeAt = Date.now() + RATE_LIMIT_RESUME_DELAY_MS;
+            await setPersistentBlockQueue(state);
+            void browser.runtime
+              .sendMessage({
+                type: 'feedsieve:block-queue-schedule-resume',
+                queueId: state.id,
+                resumeAt: state.autoResumeAt,
+                targetTabId: state.targetTabId,
+              })
+              .catch(() => {
+                // The persisted deadline lets the next extension startup
+                // recreate the alarm if the service worker is unavailable.
+              });
+            return;
+          }
+          if (['auth_required', 'missing_csrf', 'network_error'].includes(outcome.code)) {
+            currentTask.status = 'pending';
+            state.status = 'paused';
+            state.pauseReason = 'requires_attention';
+            delete state.autoResumeAt;
             await setPersistentBlockQueue(state);
             return;
           }
@@ -1552,6 +1601,9 @@ export default defineContentScript({
 
 /** 相邻两次拉黑请求的间隔（毫秒），与批量执行一致。 */
 const PACE_MS = 400;
+
+/** X 返回 429 后的自动恢复等待时间。 */
+const RATE_LIMIT_RESUME_DELAY_MS = 15 * 60 * 1000;
 
 /** mutation 停止后到扫描的固定间隔。 */
 const SCAN_DEBOUNCE_MS = 300;

@@ -76,4 +76,26 @@ describe('持久化拉黑队列', () => {
       tasks: [{ handle: 'legacy', status: 'pending' }],
     });
   });
+
+  it('保留限流后的自动恢复时间，旧队列字段仍可缺省', async () => {
+    storage.persistentBlockQueueV1 = {
+      id: 'rate-limited-queue',
+      source: 'page-batch',
+      targetTabId: 42,
+      status: 'paused',
+      pauseReason: 'rate_limited',
+      autoResumeAt: 1_800_000_000_000,
+      createdAt: 1,
+      updatedAt: 2,
+      tasks: [{ handle: 'limited', category: 'other', status: 'pending' }],
+    };
+
+    expect(await getPersistentBlockQueue()).toMatchObject({
+      id: 'rate-limited-queue',
+      targetTabId: 42,
+      status: 'paused',
+      pauseReason: 'rate_limited',
+      autoResumeAt: 1_800_000_000_000,
+    });
+  });
 });

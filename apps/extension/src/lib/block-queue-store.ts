@@ -8,6 +8,11 @@
 export type PersistentBlockQueueSource = 'page-batch' | 'community-batch';
 export type PersistentBlockQueueStatus = 'running' | 'paused' | 'completed' | 'cancelled';
 export type PersistentBlockTaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
+export type PersistentBlockQueuePauseReason =
+  | 'manual'
+  | 'rate_limited'
+  | 'interrupted'
+  | 'requires_attention';
 
 export interface PersistentBlockTask {
   handle: string;
@@ -30,6 +35,9 @@ export interface PersistentBlockQueueState {
   /** Tab selected when the queue was created; used for routing and recovery UI. */
   targetTabId?: number;
   status: PersistentBlockQueueStatus;
+  pauseReason?: PersistentBlockQueuePauseReason;
+  /** Unix timestamp after which a rate-limited queue may be resumed automatically. */
+  autoResumeAt?: number;
   tasks: PersistentBlockTask[];
   createdAt: number;
   updatedAt: number;
@@ -94,6 +102,13 @@ function normalizeQueue(value: unknown): PersistentBlockQueueState | null {
     source: raw.source,
     ...(typeof raw.targetTabId === 'number' ? { targetTabId: raw.targetTabId } : {}),
     status: raw.status as PersistentBlockQueueStatus,
+    ...(typeof raw.pauseReason === 'string' &&
+    ['manual', 'rate_limited', 'interrupted', 'requires_attention'].includes(raw.pauseReason)
+      ? { pauseReason: raw.pauseReason as PersistentBlockQueuePauseReason }
+      : {}),
+    ...(typeof raw.autoResumeAt === 'number' && Number.isFinite(raw.autoResumeAt)
+      ? { autoResumeAt: raw.autoResumeAt }
+      : {}),
     tasks,
     createdAt: Number(raw.createdAt) || Date.now(),
     updatedAt: Number(raw.updatedAt) || Date.now(),

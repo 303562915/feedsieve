@@ -1,33 +1,49 @@
-import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   getBlockedAccounts,
   subscribeBlocked,
   type BlockedAccount,
-} from '../../src/lib/blocked-accounts';
-import { getDailyStats, subscribeDaily, type DailyStats } from '../../src/lib/daily-stats';
-import { buildReportText, shareUrl } from '../../src/lib/share-card';
-import { estimateTimeSaved } from '../../src/lib/time-saved';
-import { getStats, subscribeStats, type LocalStats } from '../../src/lib/local-stats';
+} from "../../src/lib/blocked-accounts";
+import {
+  getDailyStats,
+  subscribeDaily,
+  type DailyStats,
+} from "../../src/lib/daily-stats";
+import { buildReportText, shareUrl } from "../../src/lib/share-card";
+import { estimateTimeSaved } from "../../src/lib/time-saved";
+import {
+  getStats,
+  subscribeStats,
+  type LocalStats,
+} from "../../src/lib/local-stats";
 import {
   getContributionStats,
   getInstallationId,
   type ContributionStats,
-} from '../../src/lib/contribute';
-import { drawReportCard } from '../../src/lib/share-card-image';
+} from "../../src/lib/contribute";
+import { drawReportCard } from "../../src/lib/share-card-image";
 import {
   getAllowlist,
   removeAllowed,
   subscribeAllowlist,
   type AllowlistItem,
-} from '../../src/lib/allowlist';
+} from "../../src/lib/allowlist";
 import {
   getCommunitySettings,
   setCommunitySettings,
   getCommunitySnapshot,
   subscribeCommunity,
   type CommunitySettings,
-} from '../../src/lib/community-store';
+} from "../../src/lib/community-store";
 import {
   getFollowingAllowlist,
   getFollowingSyncState,
@@ -35,13 +51,13 @@ import {
   subscribeFollowingSyncState,
   type FollowingAllowlistItem,
   type FollowingSyncState,
-} from '../../src/lib/following-allowlist';
+} from "../../src/lib/following-allowlist";
 import {
   blockQueueProgress,
   getPersistentBlockQueue,
   subscribePersistentBlockQueue,
   type PersistentBlockQueueState,
-} from '../../src/lib/block-queue-store';
+} from "../../src/lib/block-queue-store";
 import {
   categoryLabel,
   defaultUiLanguage,
@@ -51,7 +67,7 @@ import {
   subscribeUiLanguage,
   UI_COPY,
   type UiLanguage,
-} from '../../src/lib/i18n';
+} from "../../src/lib/i18n";
 import {
   addCustomKeywordRule,
   getKeywordRuleSettings,
@@ -62,13 +78,13 @@ import {
   setOfficialKeywordRuleEnabled,
   subscribeKeywordRules,
   type KeywordRuleSettings,
-} from '../../src/lib/keyword-rules';
+} from "../../src/lib/keyword-rules";
 import {
   BUNDLED_KEYWORD_PACK_CATALOG,
   getKeywordPackCatalog,
   subscribeKeywordPackCatalog,
   type KeywordPackCatalog,
-} from '../../src/lib/keyword-packs';
+} from "../../src/lib/keyword-packs";
 import {
   createPersonalConfigDocument,
   MAX_PERSONAL_CONFIG_BYTES,
@@ -78,14 +94,14 @@ import {
   type PersonalConfigImportMode,
   type PersonalConfigImportResult,
   type PersonalConfigParseError,
-} from '../../src/lib/personal-config';
+} from "../../src/lib/personal-config";
 import {
   MARK_STRENGTHS,
   parseSnapshotBody,
   type CommunityEntry,
   type MarkStrength,
-} from '@feedsieve/community-lists';
-import type { UnblockBatchResult } from '../../src/lib/run-unblock-batch';
+} from "@feedsieve/community-lists";
+import type { UnblockBatchResult } from "../../src/lib/run-unblock-batch";
 
 interface PageBlockResult {
   blocked: string[];
@@ -109,19 +125,22 @@ interface PersonalConfigPreviewState {
   replace: PersonalConfigImportResult;
 }
 
-type PopupView = 'home' | 'overview' | 'settings';
-type ListView = 'blocked' | 'allowlist';
-type AppIconName = 'clean' | 'lists' | 'settings' | 'refresh' | 'shield';
+type PopupView = "home" | "overview" | "settings";
+type ListView = "blocked" | "allowlist";
+type AppIconName = "clean" | "lists" | "settings" | "refresh" | "shield";
 
 function initialPopupView(): PopupView {
-  const value = new URLSearchParams(globalThis.location?.search ?? '').get('view');
-  return value === 'overview' || value === 'settings' ? value : 'home';
+  const value = new URLSearchParams(globalThis.location?.search ?? "").get(
+    "view",
+  );
+  return value === "overview" || value === "settings" ? value : "home";
 }
 
 function initialListView(): ListView {
-  return new URLSearchParams(globalThis.location?.search ?? '').get('list') === 'allowlist'
-    ? 'allowlist'
-    : 'blocked';
+  return new URLSearchParams(globalThis.location?.search ?? "").get("list") ===
+    "allowlist"
+    ? "allowlist"
+    : "blocked";
 }
 
 function AppIcon({ name, size = 20 }: { name: AppIconName; size?: number }) {
@@ -184,17 +203,20 @@ function HelpIcon({ text }: { text: string }) {
   const [tooltip, setTooltip] = useState<{
     left: number;
     top: number;
-    placement: 'top' | 'bottom';
+    placement: "top" | "bottom";
   } | null>(null);
   const tooltipId = useId();
 
   const showTooltip = (target: HTMLElement) => {
     const rect = target.getBoundingClientRect();
-    const placement = rect.top > 84 ? 'top' : 'bottom';
-    const left = Math.min(Math.max(rect.left + rect.width / 2, 120), window.innerWidth - 120);
+    const placement = rect.top > 84 ? "top" : "bottom";
+    const left = Math.min(
+      Math.max(rect.left + rect.width / 2, 120),
+      window.innerWidth - 120,
+    );
     setTooltip({
       left,
-      top: placement === 'top' ? rect.top - 8 : rect.bottom + 8,
+      top: placement === "top" ? rect.top - 8 : rect.bottom + 8,
       placement,
     });
   };
@@ -212,7 +234,7 @@ function HelpIcon({ text }: { text: string }) {
         onFocus={(event) => showTooltip(event.currentTarget)}
         onBlur={() => setTooltip(null)}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') setTooltip(null);
+          if (event.key === "Escape") setTooltip(null);
         }}
       >
         !
@@ -237,52 +259,52 @@ function HelpIcon({ text }: { text: string }) {
 
 const FAILURE_LABELS: Record<UiLanguage, Record<string, string>> = {
   zh: {
-    'no-id': '缺少用户 ID',
-    auth_required: '登录已失效',
-    rate_limited: '请求过于频繁',
-    http_error: '请求异常',
-    network_error: '网络失败',
-    missing_csrf: '登录态缺失',
+    "no-id": "缺少用户 ID",
+    auth_required: "登录已失效",
+    rate_limited: "请求过于频繁",
+    http_error: "请求异常",
+    network_error: "网络失败",
+    missing_csrf: "登录态缺失",
   },
   en: {
-    'no-id': 'Missing user ID',
-    auth_required: 'Sign-in expired',
-    rate_limited: 'Rate limited',
-    http_error: 'Request error',
-    network_error: 'Network error',
-    missing_csrf: 'Missing session',
+    "no-id": "Missing user ID",
+    auth_required: "Sign-in expired",
+    rate_limited: "Rate limited",
+    http_error: "Request error",
+    network_error: "Network error",
+    missing_csrf: "Missing session",
   },
 };
 
 const STRENGTH_LABELS: Record<UiLanguage, Record<MarkStrength, string>> = {
-  zh: { refresh: '清爽', standard: '标准', deep_clean: '彻底' },
-  en: { refresh: 'Light', standard: 'Standard', deep_clean: 'Deep' },
+  zh: { refresh: "清爽", standard: "标准", deep_clean: "彻底" },
+  en: { refresh: "Light", standard: "Standard", deep_clean: "Deep" },
 };
 
 const STRENGTH_HINTS: Record<UiLanguage, Record<MarkStrength, string>> = {
   zh: {
-    refresh: '最终黑名单始终生效；尽量减少间接证据提示',
-    standard: '最终黑名单与已启用词库正常生效',
-    deep_clean: '最终黑名单之外，也提示相似话术和可疑域名',
+    refresh: "最终黑名单始终生效；尽量减少间接证据提示",
+    standard: "最终黑名单与已启用词库正常生效",
+    deep_clean: "最终黑名单之外，也提示相似话术和可疑域名",
   },
   en: {
-    refresh: 'The final blocklist stays on; minimize indirect-evidence prompts',
-    standard: 'Use the final blocklist and enabled keyword rules',
-    deep_clean: 'Also show similar wording and suspicious-domain prompts',
+    refresh: "The final blocklist stays on; minimize indirect-evidence prompts",
+    standard: "Use the final blocklist and enabled keyword rules",
+    deep_clean: "Also show similar wording and suspicious-domain prompts",
   },
 };
 
-const BLOCK_MESSAGE = { type: 'feedsieve:run-page-block' } as const;
-const PAGE_MARKED_MESSAGE = { type: 'feedsieve:page-marked-list' } as const;
+const BLOCK_MESSAGE = { type: "feedsieve:run-page-block" } as const;
+const PAGE_MARKED_MESSAGE = { type: "feedsieve:page-marked-list" } as const;
 
 function asPageMarkedList(value: unknown): PageMarkedItem[] {
   return Array.isArray(value) ? (value as PageMarkedItem[]) : [];
 }
 
 function formatDate(timestamp: number, language: UiLanguage): string {
-  return new Intl.DateTimeFormat(language === 'zh' ? 'zh-CN' : 'en', {
-    month: 'short',
-    day: 'numeric',
+  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en", {
+    month: "short",
+    day: "numeric",
   }).format(new Date(timestamp));
 }
 
@@ -296,11 +318,24 @@ function formatAgo(timestamp: number, language: UiLanguage): string {
   return t.daysAgo(Math.floor(hours / 24));
 }
 
-function allowlistReason(item: AllowlistItem, language: UiLanguage): string | undefined {
+function formatQueueCountdown(seconds: number, language: UiLanguage): string {
+  const total = Math.max(0, seconds);
+  const minutes = Math.floor(total / 60);
+  const remainingSeconds = total % 60;
+  if (language === "zh") {
+    return `${minutes} 分 ${String(remainingSeconds).padStart(2, "0")} 秒`;
+  }
+  return `${minutes}m ${String(remainingSeconds).padStart(2, "0")}s`;
+}
+
+function allowlistReason(
+  item: AllowlistItem,
+  language: UiLanguage,
+): string | undefined {
   if (!item.detectionReason) return undefined;
   if (!item.ruleId) return item.detectionReason;
   return localizedDetectionReason(language, {
-    source: item.detectionSource ?? '',
+    source: item.detectionSource ?? "",
     ruleId: item.ruleId,
     reason: item.detectionReason,
   });
@@ -311,13 +346,17 @@ function normalizeManualInput(value: string): string | null {
   let candidate = trimmed;
   try {
     const url = new URL(trimmed);
-    if (['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com'].includes(url.hostname)) {
-      candidate = url.pathname.split('/').filter(Boolean)[0] ?? '';
+    if (
+      ["x.com", "www.x.com", "twitter.com", "www.twitter.com"].includes(
+        url.hostname,
+      )
+    ) {
+      candidate = url.pathname.split("/").filter(Boolean)[0] ?? "";
     }
   } catch {
     // not a URL; treat it as @handle
   }
-  const handle = candidate.replace(/^@+/, '').toLowerCase();
+  const handle = candidate.replace(/^@+/, "").toLowerCase();
   return /^[a-z0-9_]{1,15}$/.test(handle) ? handle : null;
 }
 
@@ -329,12 +368,20 @@ export default function App() {
   const [pageMarked, setPageMarked] = useState<PageMarkedItem[] | null>(null);
   const [blocked, setBlocked] = useState<BlockedAccount[] | null>(null);
   const [daily, setDaily] = useState<DailyStats>({ days: {} });
-  const [stats, setStats] = useState<LocalStats>({ detected: 0, blocked: 0, unblocked: 0 });
-  const [contribution, setContribution] = useState<ContributionStats | null>(null);
+  const [stats, setStats] = useState<LocalStats>({
+    detected: 0,
+    blocked: 0,
+    unblocked: 0,
+  });
+  const [contribution, setContribution] = useState<ContributionStats | null>(
+    null,
+  );
   const [cardUrl, setCardUrl] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [blockResult, setBlockResult] = useState<PageBlockResult | null>(null);
-  const [unblockResult, setUnblockResult] = useState<UnblockBatchResult | null>(null);
+  const [unblockResult, setUnblockResult] = useState<UnblockBatchResult | null>(
+    null,
+  );
   const [notice, setNotice] = useState<string | null>(null);
   const [community, setCommunity] = useState<CommunitySettings | null>(null);
   const [communityMeta, setCommunityMeta] = useState<{
@@ -345,29 +392,42 @@ export default function App() {
   const [allowlist, setAllowlist] = useState<AllowlistItem[] | null>(null);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [manualHandle, setManualHandle] = useState('');
+  const [manualHandle, setManualHandle] = useState("");
   const [manualRunning, setManualRunning] = useState(false);
-  const [keywordRules, setKeywordRules] = useState<KeywordRuleSettings | null>(null);
+  const [keywordRules, setKeywordRules] = useState<KeywordRuleSettings | null>(
+    null,
+  );
   const [keywordCatalog, setKeywordCatalog] = useState<KeywordPackCatalog>(
     BUNDLED_KEYWORD_PACK_CATALOG,
   );
-  const [expandedKeywordCategory, setExpandedKeywordCategory] = useState<string | null>(null);
+  const [expandedKeywordCategory, setExpandedKeywordCategory] = useState<
+    string | null
+  >(null);
   const [keywordRulesOpen, setKeywordRulesOpen] = useState(false);
-  const [customKeyword, setCustomKeyword] = useState('');
+  const [customKeyword, setCustomKeyword] = useState("");
   const personalConfigInputRef = useRef<HTMLInputElement>(null);
   const [personalConfigPreview, setPersonalConfigPreview] =
     useState<PersonalConfigPreviewState | null>(null);
-  const [personalConfigMessage, setPersonalConfigMessage] = useState<string | null>(null);
-  const [personalConfigError, setPersonalConfigError] = useState<string | null>(null);
+  const [personalConfigMessage, setPersonalConfigMessage] = useState<
+    string | null
+  >(null);
+  const [personalConfigError, setPersonalConfigError] = useState<string | null>(
+    null,
+  );
   const [personalConfigBusy, setPersonalConfigBusy] = useState(false);
-  const [following, setFollowing] = useState<FollowingAllowlistItem[] | null>(null);
+  const [following, setFollowing] = useState<FollowingAllowlistItem[] | null>(
+    null,
+  );
   const [followingSync, setFollowingSync] = useState<FollowingSyncState>({
-    status: 'idle',
+    status: "idle",
     collected: 0,
     updatedAt: 0,
   });
   const [queue, setQueue] = useState<PersistentBlockQueueState | null>(null);
-  const [communityEntries, setCommunityEntries] = useState<CommunityEntry[]>([]);
+  const [queueClock, setQueueClock] = useState(() => Date.now());
+  const [communityEntries, setCommunityEntries] = useState<CommunityEntry[]>(
+    [],
+  );
 
   const t = UI_COPY[language];
 
@@ -409,7 +469,7 @@ export default function App() {
     void getKeywordRuleSettings().then(setKeywordRules);
     void getKeywordPackCatalog().then(setKeywordCatalog);
     void browser.runtime
-      .sendMessage({ type: 'feedsieve:keyword-packs-sync' })
+      .sendMessage({ type: "feedsieve:keyword-packs-sync" })
       .catch(() => undefined);
     void getFollowingAllowlist().then(setFollowing);
     void getFollowingSyncState().then(setFollowingSync);
@@ -438,7 +498,7 @@ export default function App() {
   }, [applyCommunitySnapshotState]);
 
   useEffect(() => {
-    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+    document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
   }, [language]);
 
   useEffect(() => {
@@ -446,6 +506,15 @@ export default function App() {
     const timeout = window.setTimeout(() => setNotice(null), 4_000);
     return () => window.clearTimeout(timeout);
   }, [notice]);
+
+  useEffect(() => {
+    if (queue?.status !== "paused" || queue.pauseReason !== "rate_limited")
+      return;
+    const tick = (): void => setQueueClock(Date.now());
+    tick();
+    const timer = window.setInterval(tick, 1_000);
+    return () => window.clearInterval(timer);
+  }, [queue?.pauseReason, queue?.status, queue?.autoResumeAt]);
 
   async function sendToXPage(message: {
     type: string;
@@ -455,13 +524,23 @@ export default function App() {
   }): Promise<unknown> {
     // Only target the active tab. Sending a destructive action to an arbitrary
     // background X tab is surprising and can block the wrong account.
-    const activeTabs = await browser.tabs.query({ active: true, lastFocusedWindow: true });
-    const tab = activeTabs.find((candidate) => {
-      const url = candidate.url ?? '';
-      return candidate.active === true && /^https:\/\/(www\.)?x\.com\//.test(url) && Boolean(candidate.id);
+    const activeTabs = await browser.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
     });
-    if (!tab?.id) throw new Error('no x.com receiver');
-    return browser.tabs.sendMessage(tab.id, { ...message, targetTabId: tab.id });
+    const tab = activeTabs.find((candidate) => {
+      const url = candidate.url ?? "";
+      return (
+        candidate.active === true &&
+        /^https:\/\/(www\.)?x\.com\//.test(url) &&
+        Boolean(candidate.id)
+      );
+    });
+    if (!tab?.id) throw new Error("no x.com receiver");
+    return browser.tabs.sendMessage(tab.id, {
+      ...message,
+      targetTabId: tab.id,
+    });
   }
 
   async function refreshPageMarked(): Promise<void> {
@@ -485,14 +564,18 @@ export default function App() {
   async function setLocalOnly(localOnly: boolean): Promise<void> {
     await setCommunitySettings({ autoContribute: !localOnly });
     if (!localOnly) {
-      await browser.runtime.sendMessage({ type: 'feedsieve:labels-sync' }).catch(() => undefined);
+      await browser.runtime
+        .sendMessage({ type: "feedsieve:labels-sync" })
+        .catch(() => undefined);
       setContribution(await getContributionStats());
     }
   }
 
   async function removeFromAllowlist(handle: string): Promise<void> {
     await removeAllowed(handle);
-    await browser.runtime.sendMessage({ type: 'feedsieve:labels-sync' }).catch(() => undefined);
+    await browser.runtime
+      .sendMessage({ type: "feedsieve:labels-sync" })
+      .catch(() => undefined);
   }
 
   async function syncCommunityNow(): Promise<void> {
@@ -500,18 +583,20 @@ export default function App() {
     setSyncMsg(null);
     try {
       const res = (await browser.runtime.sendMessage({
-        type: 'feedsieve:community-sync',
+        type: "feedsieve:community-sync",
         force: true,
       })) as { outcome?: { status: string; version?: string; error?: string } };
       const outcome = res?.outcome;
-      if (outcome?.status === 'updated') {
+      if (outcome?.status === "updated") {
         await loadCommunitySnapshotState();
         setSyncMsg(t.synced(outcome.version));
-      } else if (outcome?.status === 'unchanged') {
+      } else if (outcome?.status === "unchanged") {
         await loadCommunitySnapshotState();
         setSyncMsg(t.upToDate);
-      } else if (outcome?.status === 'error') {
-        setSyncMsg(outcome.error ? `${t.syncFailed}: ${outcome.error}` : t.syncFailed);
+      } else if (outcome?.status === "error") {
+        setSyncMsg(
+          outcome.error ? `${t.syncFailed}: ${outcome.error}` : t.syncFailed,
+        );
       } else {
         setSyncMsg(t.unavailable);
       }
@@ -543,7 +628,7 @@ export default function App() {
         id?: string;
         count?: number;
       };
-      if (result?.status === 'started') {
+      if (result?.status === "started") {
         setBlockResult(null);
         setQueue(await getPersistentBlockQueue());
         setNotice(t.queueStarted(result.count ?? 0));
@@ -551,7 +636,7 @@ export default function App() {
         setBlockResult(result as PageBlockResult);
         await refreshPageMarked();
       } else {
-        throw new Error('page_queue_not_started');
+        throw new Error("page_queue_not_started");
       }
     } catch {
       setNotice(t.openXNotice);
@@ -567,7 +652,7 @@ export default function App() {
     setUnblockResult(null);
     try {
       const result = (await sendToXPage({
-        type: 'feedsieve:unblock',
+        type: "feedsieve:unblock",
         ...(handle ? { handle } : {}),
       })) as UnblockBatchResult;
       setUnblockResult(result);
@@ -589,11 +674,11 @@ export default function App() {
     setNotice(null);
     try {
       const result = (await sendToXPage({
-        type: 'feedsieve:manual-spam-block',
+        type: "feedsieve:manual-spam-block",
         handle,
       })) as ManualBlockResult;
       if (result?.ok) {
-        setManualHandle('');
+        setManualHandle("");
         setNotice(t.manualBlocked(handle));
       } else {
         setNotice(`${t.failed}: ${result?.code ?? t.unknown}`);
@@ -611,11 +696,13 @@ export default function App() {
     try {
       const next = await addCustomKeywordRule(phrase);
       setKeywordRules(next);
-      setCustomKeyword('');
+      setCustomKeyword("");
       setNotice(t.keywordAdded);
     } catch (error) {
-      const code = error instanceof Error ? error.message : '';
-      setNotice(code === 'keyword_rule_limit' ? t.keywordLimit : t.keywordInvalid);
+      const code = error instanceof Error ? error.message : "";
+      setNotice(
+        code === "keyword_rule_limit" ? t.keywordLimit : t.keywordInvalid,
+      );
     }
   }
 
@@ -623,7 +710,10 @@ export default function App() {
     setKeywordRules(await removeCustomKeywordRule(id));
   }
 
-  async function toggleOfficialKeyword(id: string, enabled: boolean): Promise<void> {
+  async function toggleOfficialKeyword(
+    id: string,
+    enabled: boolean,
+  ): Promise<void> {
     setKeywordRules(await setOfficialKeywordRuleEnabled(id, enabled));
   }
 
@@ -631,20 +721,22 @@ export default function App() {
     category: Parameters<typeof setOfficialKeywordCategorySubscribed>[0],
     subscribed: boolean,
   ): Promise<void> {
-    setKeywordRules(await setOfficialKeywordCategorySubscribed(category, subscribed));
+    setKeywordRules(
+      await setOfficialKeywordCategorySubscribed(category, subscribed),
+    );
   }
 
   async function syncKeywordPacks(): Promise<void> {
     try {
       const result = (await browser.runtime.sendMessage({
-        type: 'feedsieve:keyword-packs-sync',
+        type: "feedsieve:keyword-packs-sync",
         force: true,
       })) as {
         outcome?: { status?: string; version?: string };
       };
       await getKeywordPackCatalog().then(setKeywordCatalog);
       setNotice(
-        result?.outcome?.status === 'error'
+        result?.outcome?.status === "error"
           ? t.syncFailed
           : t.keywordPacksSynced(result?.outcome?.version),
       );
@@ -655,13 +747,13 @@ export default function App() {
 
   function personalConfigErrorMessage(error: PersonalConfigParseError): string {
     switch (error) {
-      case 'file_too_large':
+      case "file_too_large":
         return t.personalConfigFileTooLarge;
-      case 'unsupported_version':
+      case "unsupported_version":
         return t.personalConfigUnsupportedVersion;
-      case 'invalid_json':
-      case 'invalid_format':
-      case 'invalid_payload':
+      case "invalid_json":
+      case "invalid_format":
+      case "invalid_payload":
         return t.personalConfigInvalid;
     }
   }
@@ -679,11 +771,13 @@ export default function App() {
           catalog: keywordCatalog,
         }),
       );
-      const objectUrl = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
-      const anchor = document.createElement('a');
+      const objectUrl = URL.createObjectURL(
+        new Blob([body], { type: "application/json" }),
+      );
+      const anchor = document.createElement("a");
       anchor.href = objectUrl;
       anchor.download = `feedsieve-personal-config-${new Date().toISOString().slice(0, 10)}.json`;
-      anchor.style.display = 'none';
+      anchor.style.display = "none";
       document.body.append(anchor);
       anchor.click();
       anchor.remove();
@@ -701,10 +795,12 @@ export default function App() {
     personalConfigInputRef.current?.click();
   }
 
-  async function readPersonalConfigFile(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+  async function readPersonalConfigFile(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
     const file = event.currentTarget.files?.[0];
     // 同一文件再次选择时也要触发 change；读取后立即清空 input。
-    event.currentTarget.value = '';
+    event.currentTarget.value = "";
     if (!file || !keywordRules || !community) return;
     setPersonalConfigError(null);
     setPersonalConfigMessage(null);
@@ -719,17 +815,28 @@ export default function App() {
         setPersonalConfigError(personalConfigErrorMessage(parsed.error));
         return;
       }
-      const context = { keywordRules, community, language, catalog: keywordCatalog };
+      const context = {
+        keywordRules,
+        community,
+        language,
+        catalog: keywordCatalog,
+      };
       setPersonalConfigPreview({
-        merge: preparePersonalConfigImport(parsed.document, context, 'merge'),
-        replace: preparePersonalConfigImport(parsed.document, context, 'replace'),
+        merge: preparePersonalConfigImport(parsed.document, context, "merge"),
+        replace: preparePersonalConfigImport(
+          parsed.document,
+          context,
+          "replace",
+        ),
       });
     } catch {
       setPersonalConfigError(t.personalConfigReadFailed);
     }
   }
 
-  async function applyPersonalConfig(mode: PersonalConfigImportMode): Promise<void> {
+  async function applyPersonalConfig(
+    mode: PersonalConfigImportMode,
+  ): Promise<void> {
     const prepared = personalConfigPreview?.[mode];
     if (!prepared?.next || personalConfigBusy) return;
     setPersonalConfigBusy(true);
@@ -761,11 +868,13 @@ export default function App() {
     setSyncing(true);
     setNotice(null);
     try {
-      const result = (await sendToXPage({ type: 'feedsieve:following-sync-start' })) as {
+      const result = (await sendToXPage({
+        type: "feedsieve:following-sync-start",
+      })) as {
         status?: string;
         error?: string;
       };
-      if (result?.status === 'error') {
+      if (result?.status === "error") {
         setNotice(`${t.syncFailed}: ${result.error ?? t.unavailable}`);
       }
     } catch {
@@ -781,7 +890,7 @@ export default function App() {
     setNotice(null);
     try {
       await sendToXPage({
-        type: 'feedsieve:community-block-start',
+        type: "feedsieve:community-block-start",
         items: cloudEligible.map((entry) => ({
           handle: entry.handle,
           ...(entry.x_user_id ? { xUserId: entry.x_user_id } : {}),
@@ -795,7 +904,9 @@ export default function App() {
     }
   }
 
-  async function controlQueue(action: 'resume' | 'pause' | 'cancel'): Promise<void> {
+  async function controlQueue(
+    action: "resume" | "pause" | "cancel",
+  ): Promise<void> {
     try {
       await sendToXPage({ type: `feedsieve:block-queue-${action}` });
     } catch {
@@ -813,13 +924,17 @@ export default function App() {
   const officialKeywordRuleNames = new Map(
     officialKeywordRules.map((rule) => [rule.id, rule.name[language]]),
   );
-  const personalConfigMergePreview = personalConfigPreview?.merge.preview ?? null;
-  const personalConfigReplacePreview = personalConfigPreview?.replace.preview ?? null;
+  const personalConfigMergePreview =
+    personalConfigPreview?.merge.preview ?? null;
+  const personalConfigReplacePreview =
+    personalConfigPreview?.replace.preview ?? null;
   const personalConfigPreferenceChanges = personalConfigMergePreview
     ? [
         personalConfigMergePreview.languageChange
           ? `${t.languageSetting} → ${
-              personalConfigMergePreview.languageChange.to === 'zh' ? '中文' : 'EN'
+              personalConfigMergePreview.languageChange.to === "zh"
+                ? "中文"
+                : "EN"
             }`
           : null,
         personalConfigMergePreview.communityEnabledChange
@@ -831,7 +946,9 @@ export default function App() {
           : null,
         personalConfigMergePreview.markStrengthChange
           ? `${t.strength} → ${
-              STRENGTH_LABELS[language][personalConfigMergePreview.markStrengthChange.to]
+              STRENGTH_LABELS[language][
+                personalConfigMergePreview.markStrengthChange.to
+              ]
             }`
           : null,
       ].filter((value): value is string => value !== null)
@@ -851,7 +968,7 @@ export default function App() {
   const queueActive =
     queue &&
     queueSummary.total > 0 &&
-    (queue.status === 'running' || queue.status === 'paused');
+    (queue.status === "running" || queue.status === "paused");
   const queueStatusLabel = queue
     ? {
         running: t.queueRunning,
@@ -859,18 +976,27 @@ export default function App() {
         completed: t.queueCompleted,
         cancelled: t.queueCancelled,
       }[queue.status]
-    : '';
+    : "";
+  const queueAutoResumeSeconds =
+    queue?.status === "paused" &&
+    queue.pauseReason === "rate_limited" &&
+    typeof queue.autoResumeAt === "number"
+      ? Math.max(0, Math.ceil((queue.autoResumeAt - queueClock) / 1000))
+      : null;
   const followingSyncActive =
-    followingSync.status === 'running' || followingSync.status === 'waiting';
-  const followingSyncStale = followingSyncActive && Date.now() - followingSync.updatedAt > 60_000;
-  const failedSummary = (result: { failed: Array<{ handle: string; code: string }> } | null) =>
+    followingSync.status === "running" || followingSync.status === "waiting";
+  const followingSyncStale =
+    followingSyncActive && Date.now() - followingSync.updatedAt > 60_000;
+  const failedSummary = (
+    result: { failed: Array<{ handle: string; code: string }> } | null,
+  ) =>
     result?.failed.length
       ? result.failed
           .map(
             (failure) =>
               `@${failure.handle} (${FAILURE_LABELS[language][failure.code] ?? failure.code})`,
           )
-          .join(' · ')
+          .join(" · ")
       : null;
 
   const today = daily.days[new Date().toISOString().slice(0, 10)] ?? {
@@ -895,13 +1021,15 @@ export default function App() {
   function makeCard(): void {
     try {
       const canvas = drawReportCard(today, language);
-      setCardUrl(canvas.toDataURL('image/png'));
+      setCardUrl(canvas.toDataURL("image/png"));
     } catch {
       setCardUrl(null);
     }
   }
 
-  const communityStatus = communityMeta ? t.listReady(communityMeta.count) : t.listLoading;
+  const communityStatus = communityMeta
+    ? t.listReady(communityMeta.count)
+    : t.listLoading;
 
   return (
     <main className="popup">
@@ -910,8 +1038,11 @@ export default function App() {
           <img src="/icon-64.png" alt="" className="brand-icon" />
           <h1>{t.brand}</h1>
         </div>
-        {view === 'home' ? (
-          <div className={`sync-pill${communityMeta ? ' is-ready' : ''}`} title={communityStatus}>
+        {view === "home" ? (
+          <div
+            className={`sync-pill${communityMeta ? " is-ready" : ""}`}
+            title={communityStatus}
+          >
             <span className="sync-dot" aria-hidden="true" />
             <span>{communityStatus}</span>
           </div>
@@ -919,13 +1050,18 @@ export default function App() {
       </header>
 
       <div className="popup-content">
-        {view === 'home' ? (
+        {view === "home" ? (
           <div className="view-stack home-view">
-            <section className={`review-card${pageCount === 0 ? ' is-clean' : ''}`}>
+            <section
+              className={`review-card${pageCount === 0 ? " is-clean" : ""}`}
+            >
               <div className="section-heading">
                 <h2>{t.pageMarked}</h2>
-                <span className="count-badge" aria-label={`${t.pageMarked}: ${pageCount ?? 0}`}>
-                  {pageCount === null ? '…' : pageCount}
+                <span
+                  className="count-badge"
+                  aria-label={`${t.pageMarked}: ${pageCount ?? 0}`}
+                >
+                  {pageCount === null ? "…" : pageCount}
                 </span>
               </div>
 
@@ -955,7 +1091,9 @@ export default function App() {
                             {categoryLabel(item.category, language)}
                           </span>
                         </div>
-                        {item.reason ? <span className="account-reason">{item.reason}</span> : null}
+                        {item.reason ? (
+                          <span className="account-reason">{item.reason}</span>
+                        ) : null}
                       </div>
                     </li>
                   ))}
@@ -967,8 +1105,9 @@ export default function App() {
                   {t.blockedResult(blockResult.blocked.length)}
                   {failedSummary(blockResult) ? (
                     <span className="result-failure">
-                      {' '}
-                      · {t.failedResult(blockResult.failed.length)} · {failedSummary(blockResult)}
+                      {" "}
+                      · {t.failedResult(blockResult.failed.length)} ·{" "}
+                      {failedSummary(blockResult)}
                     </span>
                   ) : null}
                 </p>
@@ -1005,7 +1144,11 @@ export default function App() {
               <div className="primary-actions">
                 <button
                   className="primary-action"
-                  disabled={!pageCount || running || Boolean(queueActive && queue?.source === 'page-batch')}
+                  disabled={
+                    !pageCount ||
+                    running ||
+                    Boolean(queueActive && queue?.source === "page-batch")
+                  }
                   onClick={() => void runBatch()}
                 >
                   {running
@@ -1027,7 +1170,10 @@ export default function App() {
               </div>
             </section>
 
-            <section className="community-clean-card" aria-labelledby="community-clean-title">
+            <section
+              className="community-clean-card"
+              aria-labelledby="community-clean-title"
+            >
               <div className="section-heading compact">
                 <h2 id="community-clean-title">
                   {t.communityClean} <HelpIcon text={t.communityCleanHint} />
@@ -1044,14 +1190,18 @@ export default function App() {
               </div>
 
               {cloudEligible.length > 0 ? (
-                <ul className="community-preview" aria-label={t.communityPreview}>
+                <ul
+                  className="community-preview"
+                  aria-label={t.communityPreview}
+                >
                   {cloudEligible.slice(0, 5).map((entry) => (
                     <li key={entry.handle}>
                       <span>@{entry.handle}</span>
                       <small>
-                        {entry.sources.includes('maintainer') && entry.sources.includes('community')
+                        {entry.sources.includes("maintainer") &&
+                        entry.sources.includes("community")
                           ? t.communitySourceBoth(entry.net_votes)
-                          : entry.sources.includes('maintainer')
+                          : entry.sources.includes("maintainer")
                             ? t.communitySourceMaintainer
                             : t.communitySourceVotes(entry.net_votes)}
                       </small>
@@ -1071,8 +1221,10 @@ export default function App() {
                 <div className="queue-panel">
                   <div className="queue-line">
                     <span>
-                      {queue.source === 'page-batch' ? t.pageMarked : t.communityClean} ·{' '}
-                      {t.queueProgress(queueDone, queueSummary.total)}
+                      {queue.source === "page-batch"
+                        ? t.pageMarked
+                        : t.communityClean}{" "}
+                      · {t.queueProgress(queueDone, queueSummary.total)}
                     </span>
                     <strong>{queueStatusLabel}</strong>
                   </div>
@@ -1084,27 +1236,53 @@ export default function App() {
                       }}
                     />
                   </div>
-                  {queue.status === 'running' ? (
+                  {queueAutoResumeSeconds !== null ? (
+                    <p
+                      className="queue-notice"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      {queueAutoResumeSeconds > 0
+                        ? t.queueRateLimited(
+                            formatQueueCountdown(
+                              queueAutoResumeSeconds,
+                              language,
+                            ),
+                          )
+                        : t.queueAutoResumeNow}
+                    </p>
+                  ) : queue?.pauseReason === "requires_attention" ? (
+                    <p className="queue-notice is-warning" role="status">
+                      {t.queueRequiresAttention}
+                    </p>
+                  ) : null}
+                  {queue.status === "running" ? (
                     <div className="queue-actions">
                       <button
                         className="secondary-inline"
-                        onClick={() => void controlQueue('pause')}
+                        onClick={() => void controlQueue("pause")}
                       >
                         {t.pause}
                       </button>
-                      <button className="text-action" onClick={() => void controlQueue('cancel')}>
+                      <button
+                        className="text-action"
+                        onClick={() => void controlQueue("cancel")}
+                      >
                         {t.cancel}
                       </button>
                     </div>
-                  ) : queue.status === 'paused' ? (
+                  ) : queue.status === "paused" ? (
                     <div className="queue-actions">
                       <button
                         className="secondary-inline"
-                        onClick={() => void controlQueue('resume')}
+                        onClick={() => void controlQueue("resume")}
                       >
                         {t.resume}
                       </button>
-                      <button className="text-action" onClick={() => void controlQueue('cancel')}>
+                      <button
+                        className="text-action"
+                        onClick={() => void controlQueue("cancel")}
+                      >
                         {t.cancel}
                       </button>
                     </div>
@@ -1177,7 +1355,11 @@ export default function App() {
                   ) : null}
                   {today.blocked > 0 ? (
                     <div className="report-actions">
-                      <button type="button" className="secondary-inline" onClick={makeCard}>
+                      <button
+                        type="button"
+                        className="secondary-inline"
+                        onClick={makeCard}
+                      >
                         {t.reportCard}
                       </button>
                       <a
@@ -1193,7 +1375,11 @@ export default function App() {
                   {cardUrl ? (
                     <div className="report-card-preview">
                       <img src={cardUrl} alt={t.reportImageAlt} />
-                      <a className="text-action" href={cardUrl} download="feedsieve-report.png">
+                      <a
+                        className="text-action"
+                        href={cardUrl}
+                        download="feedsieve-report.png"
+                      >
                         {t.downloadImage}
                       </a>
                     </div>
@@ -1204,7 +1390,7 @@ export default function App() {
           </div>
         ) : null}
 
-        {view === 'overview' ? (
+        {view === "overview" ? (
           <div className="view-stack lists-view">
             <section className="summary-card overview-total">
               <div className="section-heading compact">
@@ -1230,32 +1416,34 @@ export default function App() {
                 id="blocked-list-tab"
                 type="button"
                 role="tab"
-                aria-selected={listView === 'blocked'}
-                className={listView === 'blocked' ? 'is-selected' : ''}
-                onClick={() => setListView('blocked')}
+                aria-selected={listView === "blocked"}
+                className={listView === "blocked" ? "is-selected" : ""}
+                onClick={() => setListView("blocked")}
               >
                 <span>{t.manageBlocked}</span>
-                <strong>{blockedCount === null ? '…' : blockedCount}</strong>
+                <strong>{blockedCount === null ? "…" : blockedCount}</strong>
               </button>
               <button
                 id="allowlist-tab"
                 type="button"
                 role="tab"
-                aria-selected={listView === 'allowlist'}
-                className={listView === 'allowlist' ? 'is-selected' : ''}
-                onClick={() => setListView('allowlist')}
+                aria-selected={listView === "allowlist"}
+                className={listView === "allowlist" ? "is-selected" : ""}
+                onClick={() => setListView("allowlist")}
               >
                 <span>{t.falsePositiveList}</span>
-                <strong>{allowlist === null ? '…' : allowlist.length}</strong>
+                <strong>{allowlist === null ? "…" : allowlist.length}</strong>
               </button>
             </div>
 
             <section
               className="manage-card"
               role="tabpanel"
-              aria-labelledby={listView === 'blocked' ? 'blocked-list-tab' : 'allowlist-tab'}
+              aria-labelledby={
+                listView === "blocked" ? "blocked-list-tab" : "allowlist-tab"
+              }
             >
-              {listView === 'blocked' ? (
+              {listView === "blocked" ? (
                 <>
                   {blockedCount === null ? (
                     <div className="loading-list" aria-hidden="true">
@@ -1267,11 +1455,16 @@ export default function App() {
                     <ul className="manage-list">
                       {blocked!.map((account) => (
                         <li key={account.handle} className="manage-item">
-                          <span className="account-avatar is-muted" aria-hidden="true">
+                          <span
+                            className="account-avatar is-muted"
+                            aria-hidden="true"
+                          >
                             {account.handle.slice(0, 1).toUpperCase()}
                           </span>
                           <div className="account-info">
-                            <span className="account-handle">@{account.handle}</span>
+                            <span className="account-handle">
+                              @{account.handle}
+                            </span>
                             <span className="account-reason">
                               {formatDate(account.blockedAt, language)}
                             </span>
@@ -1299,8 +1492,8 @@ export default function App() {
                       {t.restoredResult(unblockResult.unblocked.length)}
                       {failedSummary(unblockResult) ? (
                         <span className="result-failure">
-                          {' '}
-                          · {t.failedResult(unblockResult.failed.length)} ·{' '}
+                          {" "}
+                          · {t.failedResult(unblockResult.failed.length)} ·{" "}
                           {failedSummary(unblockResult)}
                         </span>
                       ) : null}
@@ -1326,12 +1519,20 @@ export default function App() {
                   ) : allowlist.length > 0 ? (
                     <ul className="manage-list allowlist-list">
                       {allowlist.map((item) => (
-                        <li key={item.handle} className="manage-item allowlist-item">
-                          <span className="account-avatar is-safe" aria-hidden="true">
+                        <li
+                          key={item.handle}
+                          className="manage-item allowlist-item"
+                        >
+                          <span
+                            className="account-avatar is-safe"
+                            aria-hidden="true"
+                          >
                             {item.handle.slice(0, 1).toUpperCase()}
                           </span>
                           <div className="account-info">
-                            <span className="account-handle">@{item.handle}</span>
+                            <span className="account-handle">
+                              @{item.handle}
+                            </span>
                             <span className="account-meta">
                               {formatDate(item.addedAt, language)}
                             </span>
@@ -1349,7 +1550,9 @@ export default function App() {
                             className="remove-action"
                             aria-label={`${t.removeAllowlist}: @${item.handle}`}
                             title={t.removeAllowlist}
-                            onClick={() => void removeFromAllowlist(item.handle)}
+                            onClick={() =>
+                              void removeFromAllowlist(item.handle)
+                            }
                           >
                             ×
                           </button>
@@ -1368,20 +1571,28 @@ export default function App() {
           </div>
         ) : null}
 
-        {view === 'settings' ? (
+        {view === "settings" ? (
           <div className="view-stack settings-view">
             <section className="settings-card following-card">
               <div className="settings-card-head">
                 <h2>{t.followingProtection}</h2>
-                <span className="community-meta is-ready">{following?.length ?? '…'}</span>
+                <span className="community-meta is-ready">
+                  {following?.length ?? "…"}
+                </span>
               </div>
               {followingSyncStale ? (
-                <p className="inline-notice result-failure">{t.syncFollowingInterrupted}</p>
+                <p className="inline-notice result-failure">
+                  {t.syncFollowingInterrupted}
+                </p>
               ) : followingSyncActive ? (
-                <p className="inline-notice">{t.syncFollowingWorking(followingSync.collected)}</p>
-              ) : followingSync.status === 'complete' ? (
-                <p className="inline-notice">{t.syncFollowingComplete(followingSync.collected)}</p>
-              ) : followingSync.status === 'error' ? (
+                <p className="inline-notice">
+                  {t.syncFollowingWorking(followingSync.collected)}
+                </p>
+              ) : followingSync.status === "complete" ? (
+                <p className="inline-notice">
+                  {t.syncFollowingComplete(followingSync.collected)}
+                </p>
+              ) : followingSync.status === "error" ? (
                 <p className="inline-notice result-failure">
                   {t.syncFailed}: {followingSync.error ?? t.unknown}
                 </p>
@@ -1389,7 +1600,9 @@ export default function App() {
               <button
                 type="button"
                 className="secondary-action"
-                disabled={syncing || (followingSyncActive && !followingSyncStale)}
+                disabled={
+                  syncing || (followingSyncActive && !followingSyncStale)
+                }
                 onClick={() => void startFollowingSync()}
               >
                 {followingSyncStale ? t.resyncFollowing : t.syncFollowing}
@@ -1421,121 +1634,155 @@ export default function App() {
                 </div>
               </div>
 
-              {keywordRulesOpen ? <><form
-                className="keyword-add-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void addKeyword();
-                }}
-              >
-                <input
-                  value={customKeyword}
-                  maxLength={80}
-                  placeholder={t.keywordPlaceholder}
-                  aria-label={t.keywordPlaceholder}
-                  onChange={(event) => setCustomKeyword(event.target.value)}
-                />
-                <button type="submit" className="secondary-inline" disabled={!customKeyword.trim()}>
-                  {t.addKeyword}
-                </button>
-              </form>
+              {keywordRulesOpen ? (
+                <>
+                  <form
+                    className="keyword-add-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void addKeyword();
+                    }}
+                  >
+                    <input
+                      value={customKeyword}
+                      maxLength={80}
+                      placeholder={t.keywordPlaceholder}
+                      aria-label={t.keywordPlaceholder}
+                      onChange={(event) => setCustomKeyword(event.target.value)}
+                    />
+                    <button
+                      type="submit"
+                      className="secondary-inline"
+                      disabled={!customKeyword.trim()}
+                    >
+                      {t.addKeyword}
+                    </button>
+                  </form>
 
-              {keywordRules ? (
-                <div className="keyword-rules-body">
-                  {keywordRules.customRules.length > 0 ? (
-                    <ul className="keyword-list custom-keyword-list">
-                      {keywordRules.customRules.map((rule) => (
-                        <li key={rule.id}>
-                          <span title={rule.phrase}>{rule.phrase}</span>
-                          <button
-                            type="button"
-                            className="remove-action"
-                            aria-label={`${t.removeKeyword}: ${rule.phrase}`}
-                            title={t.removeKeyword}
-                            onClick={() => void removeCustomKeyword(rule.id)}
-                          >
-                            ×
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                  {keywordRules ? (
+                    <div className="keyword-rules-body">
+                      {keywordRules.customRules.length > 0 ? (
+                        <ul className="keyword-list custom-keyword-list">
+                          {keywordRules.customRules.map((rule) => (
+                            <li key={rule.id}>
+                              <span title={rule.phrase}>{rule.phrase}</span>
+                              <button
+                                type="button"
+                                className="remove-action"
+                                aria-label={`${t.removeKeyword}: ${rule.phrase}`}
+                                title={t.removeKeyword}
+                                onClick={() =>
+                                  void removeCustomKeyword(rule.id)
+                                }
+                              >
+                                ×
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      <div className="official-keyword-groups">
+                        {keywordCatalog.packs.map((category) => {
+                          const rules = officialKeywordRules.filter(
+                            (rule) => rule.category === category.id,
+                          );
+                          const subscribed =
+                            isOfficialKeywordCategorySubscribed(
+                              keywordRules,
+                              category.id,
+                            );
+                          const enabledCount = subscribed
+                            ? rules.filter(
+                                (rule) =>
+                                  !keywordRules.disabledOfficialRuleIds.includes(
+                                    rule.id,
+                                  ),
+                              ).length
+                            : 0;
+                          const expanded =
+                            expandedKeywordCategory === category.id;
+                          return (
+                            <div className="keyword-pack" key={category.id}>
+                              <div className="keyword-pack-row">
+                                <button
+                                  type="button"
+                                  className="keyword-pack-title"
+                                  aria-expanded={expanded}
+                                  onClick={() =>
+                                    setExpandedKeywordCategory(
+                                      expanded ? null : category.id,
+                                    )
+                                  }
+                                >
+                                  <span aria-hidden="true">
+                                    {expanded ? "−" : "+"}
+                                  </span>
+                                  <strong>{category.name[language]}</strong>
+                                  <HelpIcon
+                                    text={category.description[language]}
+                                  />
+                                </button>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  className={`keyword-pack-toggle${subscribed ? " is-on" : ""}`}
+                                  aria-checked={subscribed}
+                                  aria-label={`${category.name[language]} · ${
+                                    subscribed
+                                      ? t.unsubscribeKeywordPack
+                                      : t.subscribeKeywordPack
+                                  }`}
+                                  title={`${enabledCount}/${rules.length}`}
+                                  onClick={() =>
+                                    void toggleOfficialKeywordCategory(
+                                      category.id,
+                                      !subscribed,
+                                    )
+                                  }
+                                >
+                                  <span />
+                                </button>
+                              </div>
+                              {expanded ? (
+                                <ul className="keyword-list official-keyword-list">
+                                  {rules.map((rule) => {
+                                    const enabled =
+                                      subscribed &&
+                                      !keywordRules.disabledOfficialRuleIds.includes(
+                                        rule.id,
+                                      );
+                                    return (
+                                      <li
+                                        key={rule.id}
+                                        className={enabled ? "" : "is-disabled"}
+                                      >
+                                        <label>
+                                          <input
+                                            type="checkbox"
+                                            checked={enabled}
+                                            disabled={!subscribed}
+                                            onChange={(event) =>
+                                              void toggleOfficialKeyword(
+                                                rule.id,
+                                                event.target.checked,
+                                              )
+                                            }
+                                          />
+                                          <span>{rule.name[language]}</span>
+                                        </label>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ) : null}
-                  <div className="official-keyword-groups">
-                    {keywordCatalog.packs.map((category) => {
-                      const rules = officialKeywordRules.filter(
-                        (rule) => rule.category === category.id,
-                      );
-                      const subscribed = isOfficialKeywordCategorySubscribed(
-                        keywordRules,
-                        category.id,
-                      );
-                      const enabledCount = subscribed
-                        ? rules.filter(
-                            (rule) => !keywordRules.disabledOfficialRuleIds.includes(rule.id),
-                          ).length
-                        : 0;
-                      const expanded = expandedKeywordCategory === category.id;
-                      return (
-                        <div className="keyword-pack" key={category.id}>
-                          <div className="keyword-pack-row">
-                            <button
-                              type="button"
-                              className="keyword-pack-title"
-                              aria-expanded={expanded}
-                              onClick={() =>
-                                setExpandedKeywordCategory(expanded ? null : category.id)
-                              }
-                            >
-                              <span aria-hidden="true">{expanded ? '−' : '+'}</span>
-                              <strong>{category.name[language]}</strong>
-                              <HelpIcon text={category.description[language]} />
-                            </button>
-                            <button
-                              type="button"
-                              role="switch"
-                              className={`keyword-pack-toggle${subscribed ? ' is-on' : ''}`}
-                              aria-checked={subscribed}
-                              aria-label={`${category.name[language]} · ${
-                                subscribed ? t.unsubscribeKeywordPack : t.subscribeKeywordPack
-                              }`}
-                              title={`${enabledCount}/${rules.length}`}
-                              onClick={() =>
-                                void toggleOfficialKeywordCategory(category.id, !subscribed)
-                              }
-                            >
-                              <span />
-                            </button>
-                          </div>
-                          {expanded ? (
-                            <ul className="keyword-list official-keyword-list">
-                              {rules.map((rule) => {
-                                const enabled =
-                                  subscribed &&
-                                  !keywordRules.disabledOfficialRuleIds.includes(rule.id);
-                                return (
-                                  <li key={rule.id} className={enabled ? '' : 'is-disabled'}>
-                                    <label>
-                                      <input
-                                        type="checkbox"
-                                        checked={enabled}
-                                        disabled={!subscribed}
-                                        onChange={(event) =>
-                                          void toggleOfficialKeyword(rule.id, event.target.checked)
-                                        }
-                                      />
-                                      <span>{rule.name[language]}</span>
-                                    </label>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}</> : null}
+                </>
+              ) : null}
             </section>
 
             <section className="settings-card personal-config-card">
@@ -1585,16 +1832,17 @@ export default function App() {
                   <strong>{t.personalConfigPreview}</strong>
                   <ul>
                     <li>
-                      <strong>{t.personalConfigMerge}</strong>{' '}
+                      <strong>{t.personalConfigMerge}</strong>{" "}
                       {t.personalConfigCustomPreview(
                         personalConfigMergePreview.customRules.backupCount,
                         personalConfigMergePreview.customRules.resultCount,
                         personalConfigMergePreview.customRules.addedCount,
-                        personalConfigMergePreview.customRules.alreadyPresentCount,
+                        personalConfigMergePreview.customRules
+                          .alreadyPresentCount,
                       )}
                     </li>
                     <li>
-                      <strong>{t.personalConfigReplace}</strong>{' '}
+                      <strong>{t.personalConfigReplace}</strong>{" "}
                       {t.personalConfigReplaceCustomPreview(
                         personalConfigReplacePreview.customRules.resultCount,
                         personalConfigReplacePreview.customRules.removedCount,
@@ -1606,16 +1854,24 @@ export default function App() {
                           personalConfigMergePreview.categoryChanges.length,
                         )}
                         <ul className="personal-config-change-list">
-                          {personalConfigMergePreview.categoryChanges.slice(0, 3).map((change) => (
-                            <li key={change.id}>
-                              {keywordCategoryNames.get(change.id) ?? change.id} →{' '}
-                              {change.to ? t.personalConfigOn : t.personalConfigOff}
-                            </li>
-                          ))}
-                          {personalConfigMergePreview.categoryChanges.length > 3 ? (
+                          {personalConfigMergePreview.categoryChanges
+                            .slice(0, 3)
+                            .map((change) => (
+                              <li key={change.id}>
+                                {keywordCategoryNames.get(change.id) ??
+                                  change.id}{" "}
+                                →{" "}
+                                {change.to
+                                  ? t.personalConfigOn
+                                  : t.personalConfigOff}
+                              </li>
+                            ))}
+                          {personalConfigMergePreview.categoryChanges.length >
+                          3 ? (
                             <li>
                               {t.personalConfigMore(
-                                personalConfigMergePreview.categoryChanges.length - 3,
+                                personalConfigMergePreview.categoryChanges
+                                  .length - 3,
                               )}
                             </li>
                           ) : null}
@@ -1624,18 +1880,27 @@ export default function App() {
                     ) : null}
                     {personalConfigMergePreview.ruleChanges.length > 0 ? (
                       <li>
-                        {t.personalConfigRules(personalConfigMergePreview.ruleChanges.length)}
+                        {t.personalConfigRules(
+                          personalConfigMergePreview.ruleChanges.length,
+                        )}
                         <ul className="personal-config-change-list">
-                          {personalConfigMergePreview.ruleChanges.slice(0, 3).map((change) => (
-                            <li key={change.id}>
-                              {officialKeywordRuleNames.get(change.id) ?? change.id} →{' '}
-                              {change.to ? t.personalConfigOff : t.personalConfigOn}
-                            </li>
-                          ))}
+                          {personalConfigMergePreview.ruleChanges
+                            .slice(0, 3)
+                            .map((change) => (
+                              <li key={change.id}>
+                                {officialKeywordRuleNames.get(change.id) ??
+                                  change.id}{" "}
+                                →{" "}
+                                {change.to
+                                  ? t.personalConfigOff
+                                  : t.personalConfigOn}
+                              </li>
+                            ))}
                           {personalConfigMergePreview.ruleChanges.length > 3 ? (
                             <li>
                               {t.personalConfigMore(
-                                personalConfigMergePreview.ruleChanges.length - 3,
+                                personalConfigMergePreview.ruleChanges.length -
+                                  3,
                               )}
                             </li>
                           ) : null}
@@ -1644,7 +1909,9 @@ export default function App() {
                     ) : null}
                     {personalConfigPreferenceChanges.length > 0 ? (
                       <li>
-                        {t.personalConfigPreferences(personalConfigPreferenceChanges.length)}
+                        {t.personalConfigPreferences(
+                          personalConfigPreferenceChanges.length,
+                        )}
                         <ul className="personal-config-change-list">
                           {personalConfigPreferenceChanges.map((label) => (
                             <li key={label}>{label}</li>
@@ -1665,14 +1932,17 @@ export default function App() {
                     personalConfigMergePreview.ruleChanges.length === 0 &&
                     personalConfigPreferenceChanges.length === 0 &&
                     personalConfigMergePreview.customRules.addedCount === 0 &&
-                    personalConfigReplacePreview.customRules.removedCount === 0 ? (
+                    personalConfigReplacePreview.customRules.removedCount ===
+                      0 ? (
                       <li>{t.personalConfigNoChanges}</li>
                     ) : null}
                   </ul>
-                  {personalConfigPreview?.merge.preview.customRules.exceedsLimit ? (
+                  {personalConfigPreview?.merge.preview.customRules
+                    .exceedsLimit ? (
                     <p className="result-failure">
                       {t.personalConfigMergeLimit(
-                        personalConfigPreview.merge.preview.customRules.resultCount,
+                        personalConfigPreview.merge.preview.customRules
+                          .resultCount,
                       )}
                     </p>
                   ) : null}
@@ -1680,16 +1950,21 @@ export default function App() {
                     <button
                       type="button"
                       className="secondary-inline"
-                      disabled={personalConfigBusy || !personalConfigPreview?.merge.next}
-                      onClick={() => void applyPersonalConfig('merge')}
+                      disabled={
+                        personalConfigBusy || !personalConfigPreview?.merge.next
+                      }
+                      onClick={() => void applyPersonalConfig("merge")}
                     >
                       {t.personalConfigMerge}
                     </button>
                     <button
                       type="button"
                       className="secondary-inline"
-                      disabled={personalConfigBusy || !personalConfigPreview?.replace.next}
-                      onClick={() => void applyPersonalConfig('replace')}
+                      disabled={
+                        personalConfigBusy ||
+                        !personalConfigPreview?.replace.next
+                      }
+                      onClick={() => void applyPersonalConfig("replace")}
                     >
                       {t.personalConfigReplace}
                     </button>
@@ -1711,18 +1986,20 @@ export default function App() {
                 <h2>{t.communityList}</h2>
                 <div className="settings-head-actions">
                   <span
-                    className={`community-meta${communityMeta ? ' is-ready' : ''}`}
+                    className={`community-meta${communityMeta ? " is-ready" : ""}`}
                     title={
                       communityMeta
                         ? `v${communityMeta.version} · ${formatAgo(communityMeta.syncedAt, language)}`
                         : t.listLoading
                     }
                   >
-                    {communityMeta ? `${communityMeta.count} · v${communityMeta.version}` : '…'}
+                    {communityMeta
+                      ? `${communityMeta.count} · v${communityMeta.version}`
+                      : "…"}
                   </span>
                   <button
                     type="button"
-                    className={`square-action small${syncing ? ' is-spinning' : ''}`}
+                    className={`square-action small${syncing ? " is-spinning" : ""}`}
                     aria-label={t.syncNow}
                     title={t.syncNow}
                     disabled={syncing}
@@ -1745,7 +2022,9 @@ export default function App() {
                         type="checkbox"
                         checked={community.enabled}
                         onChange={(event) =>
-                          void setCommunitySettings({ enabled: event.target.checked })
+                          void setCommunitySettings({
+                            enabled: event.target.checked,
+                          })
                         }
                       />
                       <span aria-hidden="true" />
@@ -1756,13 +2035,21 @@ export default function App() {
                     <div className="setting-copy">
                       <strong>{t.strength}</strong>
                     </div>
-                    <div className="strength-control" role="group" aria-label={t.strength}>
+                    <div
+                      className="strength-control"
+                      role="group"
+                      aria-label={t.strength}
+                    >
                       {MARK_STRENGTHS.map((strength: MarkStrength) => (
                         <button
                           key={strength}
                           type="button"
-                          className={community.strength === strength ? 'is-selected' : ''}
-                          onClick={() => void setCommunitySettings({ strength })}
+                          className={
+                            community.strength === strength ? "is-selected" : ""
+                          }
+                          onClick={() =>
+                            void setCommunitySettings({ strength })
+                          }
                         >
                           <span>{STRENGTH_LABELS[language][strength]}</span>
                           <HelpIcon text={STRENGTH_HINTS[language][strength]} />
@@ -1781,16 +2068,22 @@ export default function App() {
                       <input
                         type="checkbox"
                         checked={!community.autoContribute}
-                        onChange={(event) => void setLocalOnly(event.target.checked)}
+                        onChange={(event) =>
+                          void setLocalOnly(event.target.checked)
+                        }
                       />
                       <span aria-hidden="true" />
                     </span>
                   </label>
 
                   <div className="settings-meta-row">
-                    {contribution && (contribution.reports > 0 || contribution.rescues > 0) ? (
+                    {contribution &&
+                    (contribution.reports > 0 || contribution.rescues > 0) ? (
                       <span className="contribution-chip">
-                        {t.contribution(contribution.reports, contribution.rescues)}
+                        {t.contribution(
+                          contribution.reports,
+                          contribution.rescues,
+                        )}
                       </span>
                     ) : (
                       <span />
@@ -1806,7 +2099,10 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="loading-list settings-loading" aria-hidden="true">
+                <div
+                  className="loading-list settings-loading"
+                  aria-hidden="true"
+                >
                   <span />
                   <span />
                   <span />
@@ -1819,20 +2115,24 @@ export default function App() {
                 <span className="setting-copy">
                   <strong>{t.languageSetting}</strong>
                 </span>
-                <div className="language-control" role="group" aria-label={t.language}>
+                <div
+                  className="language-control"
+                  role="group"
+                  aria-label={t.language}
+                >
                   <button
                     type="button"
-                    className={language === 'zh' ? 'is-selected' : ''}
-                    aria-pressed={language === 'zh'}
-                    onClick={() => void selectLanguage('zh')}
+                    className={language === "zh" ? "is-selected" : ""}
+                    aria-pressed={language === "zh"}
+                    onClick={() => void selectLanguage("zh")}
                   >
                     中文
                   </button>
                   <button
                     type="button"
-                    className={language === 'en' ? 'is-selected' : ''}
-                    aria-pressed={language === 'en'}
-                    onClick={() => void selectLanguage('en')}
+                    className={language === "en" ? "is-selected" : ""}
+                    aria-pressed={language === "en"}
+                    onClick={() => void selectLanguage("en")}
                   >
                     EN
                   </button>
@@ -1852,21 +2152,23 @@ export default function App() {
       <nav className="bottom-nav" aria-label={t.primaryNavigation}>
         <button
           type="button"
-          className={view === 'home' ? 'is-active' : ''}
-          aria-current={view === 'home' ? 'page' : undefined}
-          onClick={() => setView('home')}
+          className={view === "home" ? "is-active" : ""}
+          aria-current={view === "home" ? "page" : undefined}
+          onClick={() => setView("home")}
         >
           <span className="nav-icon-wrap">
             <AppIcon name="clean" />
-            {pageCount ? <span className="nav-badge">{Math.min(pageCount, 99)}</span> : null}
+            {pageCount ? (
+              <span className="nav-badge">{Math.min(pageCount, 99)}</span>
+            ) : null}
           </span>
           <span>{t.home}</span>
         </button>
         <button
           type="button"
-          className={view === 'overview' ? 'is-active' : ''}
-          aria-current={view === 'overview' ? 'page' : undefined}
-          onClick={() => setView('overview')}
+          className={view === "overview" ? "is-active" : ""}
+          aria-current={view === "overview" ? "page" : undefined}
+          onClick={() => setView("overview")}
         >
           <span className="nav-icon-wrap">
             <AppIcon name="lists" />
@@ -1875,9 +2177,9 @@ export default function App() {
         </button>
         <button
           type="button"
-          className={view === 'settings' ? 'is-active' : ''}
-          aria-current={view === 'settings' ? 'page' : undefined}
-          onClick={() => setView('settings')}
+          className={view === "settings" ? "is-active" : ""}
+          aria-current={view === "settings" ? "page" : undefined}
+          onClick={() => setView("settings")}
         >
           <span className="nav-icon-wrap">
             <AppIcon name="settings" />
